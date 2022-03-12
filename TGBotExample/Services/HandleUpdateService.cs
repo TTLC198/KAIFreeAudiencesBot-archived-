@@ -147,7 +147,6 @@ public class HandleUpdateService
     private async Task BotOnMessageReceived(Message message)
     {
         _logger.LogInformation("Receive message type: {messageType}", message.Type);
-        var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
         try
         {
@@ -163,10 +162,10 @@ public class HandleUpdateService
                 {
                     "/start" => OnStart(_botClient, message),
                     "Узнать" => FreeRoom(_botClient, message),
-                    _ => SendMessageAsync(_botClient, message)
+                    "sh" => SendSheduleAsync(_botClient, message),
+                  _ => SendMessageAsync(_botClient, message)
                 };
             }
-
             Message sentMessage = await action;
             _logger.LogInformation("The message was sent with id: {sentMessageId}", sentMessage.MessageId);
         }
@@ -190,6 +189,15 @@ public class HandleUpdateService
                     break;
             }
         }
+    }
+    private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
+    {
+        var parser = await Parser.GetScheduleAsync(message.Text!.Split(' ')[1]);
+        
+        return await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text: String.Join(", ", parser)
+        );
     }
 
     private async Task<Message> SendMessageAsync(ITelegramBotClient botClient, Message message)
