@@ -59,6 +59,7 @@ public class HandleUpdateService
         {
             var action = message.Text!.Split(' ')[0] switch
             {
+                "sh" => SendSheduleAsync(_botClient, message),
                 _ => SendMessageAsync(_botClient, message)
             };
                 
@@ -71,7 +72,17 @@ public class HandleUpdateService
             await UnknownMessageHandlerAsync(_botClient, message);
         }
     }
-    
+
+    private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
+    {
+        var parser = await Parser.GetSheduleAsync(message.Text!.Split(' ')[1]);
+        
+        return await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text: parser
+        );
+    }
+
     private async Task<Message> SendMessageAsync(ITelegramBotClient botClient, Message message)
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
