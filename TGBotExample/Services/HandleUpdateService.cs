@@ -21,7 +21,7 @@ public class HandleUpdateService
     {
         new[]
         {
-            InlineKeyboardButton.WithCallbackData(text: "Сегодня", callbackData: "0_Автоматический ввод"),
+            InlineKeyboardButton.WithCallbackData(text: "Автоматический ввод", callbackData: "0_Автоматический ввод"),
             InlineKeyboardButton.WithCallbackData(text: "Ручной ввод", callbackData: "0_Ручной ввод"),
         }
     });
@@ -60,8 +60,8 @@ public class HandleUpdateService
     {
         new[]
         {
-            InlineKeyboardButton.WithCallbackData(text: "Yes", callbackData: "4_Yes"),
-            InlineKeyboardButton.WithCallbackData(text: "No", callbackData: "4_No")
+            InlineKeyboardButton.WithCallbackData(text: "Да", callbackData: "4_Yes"),
+            InlineKeyboardButton.WithCallbackData(text: "Нет", callbackData: "4_No")
         }
     });
 
@@ -81,8 +81,8 @@ public class HandleUpdateService
     {
         new[]
         {
-            InlineKeyboardButton.WithCallbackData(text: "Yes", callbackData: "6_Yes"),
-            InlineKeyboardButton.WithCallbackData(text: "No", callbackData: "6_No")
+            InlineKeyboardButton.WithCallbackData(text: "Да", callbackData: "6_Yes"),
+            InlineKeyboardButton.WithCallbackData(text: "Нет", callbackData: "6_No")
         }
     });
 
@@ -170,10 +170,25 @@ public class HandleUpdateService
             Message sentMessage = await action;
             _logger.LogInformation("The message was sent with id: {sentMessageId}", sentMessage.MessageId);
         }
-        catch (ArgumentException e)
+        catch (Exception e)
         {
             _logger.LogError($"Something went wrong:\n{e.Message}");
-            await UnknownMessageHandlerAsync(_botClient, message);
+            switch (e.Message)
+            {
+                case "Sunday":
+                    Message error1Message = await _botClient.SendTextMessageAsync(
+                        chatId: message.Chat.Id,
+                        text: "В воскресенье все аудитории свободны)");
+                    break;
+                case "OutOfTime":
+                    Message error2Message = await _botClient.SendTextMessageAsync(
+                        chatId: message.Chat.Id,
+                        text: "Вы пытаетесь посмотреть аудитории слишком поздно, все они уже свободны)");
+                    break;
+                default:
+                    await UnknownMessageHandlerAsync(_botClient, message);
+                    break;
+            }
         }
     }
 
@@ -194,7 +209,8 @@ public class HandleUpdateService
             chatId: message.Chat.Id,
             replyMarkup: firstChoice,
             text:
-            "Привет пользователь! Я бот помошник, помогу найти тебе свободную аудиторию! Выбери дольнейшее действие!"
+            "Привет пользователь! Я бот помошник, помогу найти тебе свободную аудиторию! Выбери дольнейшее действие!",
+            cancellationToken: CancellationToken.None
         );
     }
 
@@ -209,7 +225,8 @@ public class HandleUpdateService
             chatId: message.Chat.Id,
             replyMarkup: inlineModeKeyboard,
             text:
-            "Выбери режим действий"
+            "Выбери режим действий",
+            cancellationToken: CancellationToken.None
         );
     }
 
@@ -220,7 +237,8 @@ public class HandleUpdateService
             chatId: message.Chat.Id,
             text:
             $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\n Ты выбрал корпус: {_resultStrings[5]}\n Ты выбрал комнату {_resultStrings[7]}",
-            replyMarkup: inlineAllRightKeyboard);
+            replyMarkup: inlineAllRightKeyboard,
+            cancellationToken: CancellationToken.None);
     }
 
     private async Task QueryUpdate(ITelegramBotClient botClient, CallbackQuery query)
@@ -238,7 +256,8 @@ public class HandleUpdateService
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text: $"You chose mode: {_resultStrings[0]}\nВыбери четность недели",
-                            replyMarkup: inlineWeekKeyboard);
+                            replyMarkup: inlineWeekKeyboard,
+                            cancellationToken: CancellationToken.None);
                     }
                     else
                     {
@@ -247,7 +266,16 @@ public class HandleUpdateService
                         _resultStrings[1] = ((myDateTime.DayOfYear + firstDayOfYear) / 7 + 1) % 2 == 1
                             ? "Нечетная"
                             : "Четная";
-                        _resultStrings[2] = myDateTime.DayOfWeek.ToString();
+                        _resultStrings[2] = myDateTime.DayOfWeek.ToString() switch
+                        {
+                            "Monday" => "Понедельник",
+                            "Tuesday" => "Вторник",
+                            "Wednesday" => "Среда",
+                            "Thursday" => "Четверг",
+                            "Friday" => "Пятница",
+                            "Saturday" => "Суббота",
+                            _ => throw new Exception("Sunday")
+                        };
                         DateTime[] timesOfLessons = new DateTime[]
                         {
                             DateTime.Today.Add(new TimeSpan(8, 0, 0)),
@@ -284,12 +312,15 @@ public class HandleUpdateService
                             break;
                         }
 
+                        if (_resultStrings[3] == "") throw new Exception("OutOfTime");
+
                         action = await botClient.EditMessageTextAsync(
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text:
                             $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nБудешь выбирать здание?",
-                            replyMarkup: inlineYNBuildingKeyboard);
+                            replyMarkup: inlineYNBuildingKeyboard,
+                            cancellationToken: CancellationToken.None);
                     }
 
                     break;
@@ -300,7 +331,8 @@ public class HandleUpdateService
                         messageId: query.Message.MessageId,
                         text:
                         $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТеперь выбери день недели",
-                        replyMarkup: inlineDayKeyboard);
+                        replyMarkup: inlineDayKeyboard,
+                        cancellationToken: CancellationToken.None);
                     break;
                 case '2':
                     _resultStrings[2] = query.Data.ToString()[2..];
@@ -309,7 +341,8 @@ public class HandleUpdateService
                         messageId: query.Message.MessageId,
                         text:
                         $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели:  {_resultStrings[2]}\nМожешь выбрать временной промежуток",
-                        replyMarkup: inlineTimeKeyboard);
+                        replyMarkup: inlineTimeKeyboard,
+                        cancellationToken: CancellationToken.None);
                     break;
                 case '3':
                     _resultStrings[3] = query.Data.ToString()[2..];
@@ -318,7 +351,8 @@ public class HandleUpdateService
                         messageId: query.Message.MessageId,
                         text:
                         $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nБудешь выбирать здание?",
-                        replyMarkup: inlineYNBuildingKeyboard);
+                        replyMarkup: inlineYNBuildingKeyboard,
+                        cancellationToken: CancellationToken.None);
                     break;
                 case '4':
                     _resultStrings[4] = query.Data.ToString()[2..];
@@ -329,7 +363,8 @@ public class HandleUpdateService
                             messageId: query.Message.MessageId,
                             text:
                             $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}",
-                            replyMarkup: inlineBuildingKeyboard);
+                            replyMarkup: inlineBuildingKeyboard,
+                            cancellationToken: CancellationToken.None);
                     }
                     else
                     {
@@ -348,7 +383,8 @@ public class HandleUpdateService
                         messageId: query.Message.MessageId,
                         text:
                         $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nТы выбрал корпус: {_resultStrings[5]}\nБудешь выбирать кабинет?",
-                        replyMarkup: inlineYNRoomKeyboard);
+                        replyMarkup: inlineYNRoomKeyboard,
+                        cancellationToken: CancellationToken.None);
                     break;
                 case '6':
                     _resultStrings[6] = query.Data.ToString()[2..];
@@ -358,7 +394,8 @@ public class HandleUpdateService
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text:
-                            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nТы выбрал корпус: {_resultStrings[5]}\n Напишите кабинет");
+                            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nТы выбрал корпус: {_resultStrings[5]}\n Напишите кабинет",
+                            cancellationToken: CancellationToken.None);
                     }
                     else
                     {
@@ -385,7 +422,8 @@ public class HandleUpdateService
                         action = await botClient.SendTextMessageAsync(
                             chatId: query.Message!.Chat.Id,
                             replyMarkup: inlineModeKeyboard,
-                            text: "Выбери режим работы");
+                            text: "Выбери режим работы",
+                            cancellationToken: CancellationToken.None);
                     }
 
                     break;
