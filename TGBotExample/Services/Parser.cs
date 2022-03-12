@@ -17,41 +17,47 @@ public class Parser
 
     public static async Task<string> GetGroupIdAsync(string groupNum)
     {
+        using var httpClient = new HttpClient();
         string request = kaiUrl +
-                       "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=getGroupsURL&p_p_cacheability=cacheLevelPage&p_p_col_id=column-1&p_p_col_count=1&query=" +
-                       groupNum;
-        using (var httpClient = new HttpClient())
+                         "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10"
+                         + "&p_p_lifecycle=2"
+                         + "&p_p_state=normal"
+                         + "&p_p_mode=view"
+                         + "&p_p_resource_id=getGroupsURL"
+                         + "&p_p_cacheability=cacheLevelPage"
+                         + "&p_p_col_id=column-1"
+                         + "&p_p_col_count=1"
+                         + "&query=" +
+                         groupNum;
+
+        string responseBody = await (await httpClient.GetAsync(request))
+            .EnsureSuccessStatusCode()
+            .Content.ReadAsStringAsync();
+
+        var group = JsonConvert.DeserializeObject<List<Group>>(responseBody)!.First();
+
+        return group!.id;
+    }
+
+    public static async Task<string> GetScheduleJsonAsync(string groupNum)
+    {
+        using var httpClient = new HttpClient();
+        var groupId = await GetGroupIdAsync(groupNum);
+        string requestUri = kaiUrl
+                            + "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10"
+                            + "&p_p_lifecycle=2"
+                            + "&p_p_resource_id=schedule"
+                            + "&groupId=" + groupId;
+
+        var requestMessage = new HttpRequestMessage
         {
-            var responseBody = await (await httpClient.GetAsync(request))
-                .EnsureSuccessStatusCode()
-                .Content.ReadAsStringAsync();
+            Method = HttpMethod.Post,
+            RequestUri = new Uri(requestUri)
+        };
 
-            var group = JsonConvert.DeserializeObject<List<Group>>(responseBody)!.First();
-
-            return group!.id;
-        }
+        var response = await httpClient.SendAsync(requestMessage);
+        return await response.Content.ReadAsStringAsync();
     }
     
-    public static async Task<string> GetSheduleAsync(string groupNum)
-    {
-        string requestUri = kaiUrl +
-                         "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=schedule&p_p_cacheability=cacheLevelPage&p_p_col_id=column-1&p_p_col_count=1";
-        using (var httpClient = new HttpClient())
-        {
-            var groupId = await GetGroupIdAsync(groupNum);
-            var jsonContent = "{ \"groupId\": {" + groupId + "} }";
-            
-            var requestMessage = new HttpRequestMessage
-            {
-                Method = HttpMethod.Post,
-                RequestUri = new Uri(requestUri),
-                
-                Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
-            };
-
-            var response = await httpClient.SendAsync(requestMessage);
-
-            return await response.Content.ReadAsStringAsync();
-        }
-    }
+    
 }

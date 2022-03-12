@@ -53,7 +53,6 @@ public class HandleUpdateService
     private async Task BotOnMessageReceived(Message message)
     {
         _logger.LogInformation("Receive message type: {messageType}", message.Type);
-        var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
         try
         {
@@ -75,7 +74,7 @@ public class HandleUpdateService
 
     private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
     {
-        var parser = await Parser.GetSheduleAsync(message.Text!.Split(' ')[1]);
+        var parser = await Parser.GetScheduleJsonAsync(message.Text!.Split(' ')[1]);
         
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
