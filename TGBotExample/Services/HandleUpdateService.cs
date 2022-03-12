@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Security;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
@@ -163,7 +164,7 @@ public class HandleUpdateService
                     "/start" => OnStart(_botClient, message),
                     "Узнать" => FreeRoom(_botClient, message),
                     "sh" => SendSheduleAsync(_botClient, message),
-                  _ => SendMessageAsync(_botClient, message)
+                    _ => SendMessageAsync(_botClient, message)
                 };
             }
             Message sentMessage = await action;
@@ -422,7 +423,7 @@ public class HandleUpdateService
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        await FifPar(_resultStrings);
+                        await FifPar(_resultStrings, query.Message!);
                     }
                     else
                     {
@@ -433,7 +434,6 @@ public class HandleUpdateService
                             text: "Выбери режим работы",
                             cancellationToken: CancellationToken.None);
                     }
-
                     break;
             }
         }
@@ -444,19 +444,83 @@ public class HandleUpdateService
         }
     }
 
+    private string[] Translate(string[] humanStrings)
+    {
+        humanStrings[1] = humanStrings[1] switch
+        {
+            "Нечётная" => "0",
+            "Четная" => "1",
+            _ => ""
+        };
+        humanStrings[2] = humanStrings[2] switch
+        {
+            "Понедельник" => "1",
+            "Вторник" => "2",
+            "Среда" => "3",
+            "Четверг" => "4",
+            "Пятница" => "5",
+            "Суббота" => "6",
+            _ => ""
+        };
+        humanStrings[3] = humanStrings[3] switch
+        {
+            "8:00 - 9:30" => "1",
+            "9:40 - 11:10" => "2",
+            "11:20 - 12:50" => "3",
+            "13:30 - 15:00" => "4",
+            "15:10 - 16:40" => "5",
+            "16:50 - 18:20" => "6",
+            "18:30 - 20:00" => "7",
+            _ => ""
+        };
+
+        return humanStrings;
+    }
     private async Task ThreePar(string[] threeStrings)
     {
+        threeStrings = Translate(threeStrings);
         throw new NotImplementedException();
     }
 
     private async Task FourPar(string[] fourStrings)
     {
+        fourStrings = Translate(fourStrings);
         throw new NotImplementedException();
     }
 
-    private async Task FifPar(string[] fifeStrings)
+    private async Task FifPar(string[] fifeStrings, Message message)
     {
-        throw new NotImplementedException();
+        fifeStrings = Translate(fifeStrings);
+        List<Classroom> exampleClassRoom = new();
+        List<Lesson> exampleLessons = new();
+        List<GroupsWeekDays> exampleDaysList = new();
+        List<Teacher> exampleTeachers = new();
+        if (exampleClassRoom.Count(cl => cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == int.Parse(fifeStrings[7])) == 0)
+        {
+            var classRooms = exampleClassRoom.Where(cl =>
+                cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == int.Parse(fifeStrings[7])).ToList();
+            var groupDays = exampleDaysList.Where(wd => wd.parity == fifeStrings[1] && wd.week_day == fifeStrings[2]).ToList();
+            var lessons = exampleLessons.Where(le => le.time_range_id == int.Parse(fifeStrings[3]) && le.classroom_id == classRooms[0].id && le.schedule_id == groupDays[0].id).ToList();
+            if (lessons.Any())
+            {
+                foreach (var lesson in lessons)
+                {
+                    Message lessonMes = await _botClient.SendTextMessageAsync(
+                        chatId: message.Chat.Id,
+                        text: $"Room {classRooms[0].classroom_number}, Teacher: {exampleTeachers.Where(tc => tc.id == lesson.teacher_id).ToString()}, group: {groupDays[0].group_id}");
+                }
+            }
+            else
+            {
+                Message lessonMes = await _botClient.SendTextMessageAsync(
+                    chatId: message.Chat.Id,
+                    text: "В данный момент аудитория свободна");
+            }
+        }
+        else
+        {
+            throw new Exception("NotRoomExists");
+        }
     }
 
     private static async Task<Message> UnknownMessageHandlerAsync(ITelegramBotClient botClient, Message message)
