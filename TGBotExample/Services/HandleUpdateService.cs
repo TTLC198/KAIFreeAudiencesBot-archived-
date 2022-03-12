@@ -36,23 +36,23 @@ public class HandleUpdateService
 
     public InlineKeyboardMarkup inlineDayKeyboard = new(new[]
     {
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Пн", callbackData: "2_Mon")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Вт", callbackData: "2_Tue")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Ср", callbackData: "2_Wed")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Чт", callbackData: "2_Thu")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Пт", callbackData: "2_Fri")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Сб", callbackData: "2_Sat")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Пн", callbackData: "2_Monday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Вт", callbackData: "2_Tuesday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Ср", callbackData: "2_Wednesday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Чт", callbackData: "2_Thursday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Пт", callbackData: "2_Friday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Сб", callbackData: "2_Saturday")},
     });
 
     public InlineKeyboardMarkup inlineTimeKeyboard = new(new[]
     {
-        new[] {InlineKeyboardButton.WithCallbackData(text: "8:00 - 9:30", callbackData: "3_First")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "9:40 - 11:10", callbackData: "3_Second")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "11:20 - 12:50", callbackData: "3_Third")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "13:30 - 15:00", callbackData: "3_Fourth")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "15:10 - 16:40", callbackData: "3_Fifth")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "16:50 - 18:20", callbackData: "3_Sixth")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "18:30 - 20:00", callbackData: "3_Seventh")}
+        new[] {InlineKeyboardButton.WithCallbackData(text: "8:00 - 9:30", callbackData: "3_8:00 - 9:30")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "9:40 - 11:10", callbackData: "3_9:40 - 11:10")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "11:20 - 12:50", callbackData: "3_11:20 - 12:50")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "13:30 - 15:00", callbackData: "3_13:30 - 15:00")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "15:10 - 16:40", callbackData: "3_15:10 - 16:40")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "16:50 - 18:20", callbackData: "3_16:50 - 18:20")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "18:30 - 20:00", callbackData: "3_18:30 - 20:00")}
     });
 
     public InlineKeyboardMarkup inlineYNBuildingKeyboard = new(new[]
@@ -93,6 +93,14 @@ public class HandleUpdateService
             InlineKeyboardButton.WithCallbackData(text: "Изменить", callbackData: "7_No")
         }
     });
+
+    public ReplyKeyboardMarkup firstChoice = new(new[]
+    {
+        new KeyboardButton[] {"Узнать свободные аудитории", "Расписание"}
+    })
+    {
+        ResizeKeyboard = true
+    };
 
     public HandleUpdateService(ITelegramBotClient botClient, ILogger<HandleUpdateService> logger,
         IServiceProvider services)
@@ -152,6 +160,7 @@ public class HandleUpdateService
                 action = message.Text!.Split(' ')[0] switch
                 {
                     "/start" => OnStart(_botClient, message),
+                    "Узнать" => FreeRoom(_botClient, message),
                     _ => SendMessageAsync(_botClient, message)
                 };
             }
@@ -179,24 +188,35 @@ public class HandleUpdateService
     private async Task<Message> OnStart(ITelegramBotClient botClient, Message message)
     {
         _resultStrings = new string[8];
+        return await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            replyMarkup: firstChoice,
+            text:
+            "Привет пользователь! Я бот помошник, помогу найти тебе свободную аудиторию! Выбери дольнейшее действие!"
+        );
+    }
 
-
+    private async Task<Message> FreeRoom(ITelegramBotClient botClient, Message message)
+    {
+        Message mes = await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text: "Отлично, приступим!",
+            replyMarkup: new ReplyKeyboardRemove());
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
             replyMarkup: inlineModeKeyboard,
-            text: "Chose mode"
+            text:
+            "Выбери режим действий"
         );
     }
 
     private async Task<Message> TypeRoom(ITelegramBotClient botClient, Message message)
     {
-        
-
         _resultStrings[7] = message.Text!;
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
             text:
-            $"You chose mode: byHand\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}\n You chose {_resultStrings[5]}\n You typed {_resultStrings[7]}",
+            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\n Ты выбрал корпус: {_resultStrings[5]}\n Ты выбрал комнату {_resultStrings[7]}",
             replyMarkup: inlineAllRightKeyboard);
     }
 
@@ -214,7 +234,7 @@ public class HandleUpdateService
                         action = await botClient.EditMessageTextAsync(
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
-                            text: $"You chose mode: {_resultStrings[0]}\nNow choose type of week",
+                            text: $"You chose mode: {_resultStrings[0]}\nВыбери четсность недели",
                             replyMarkup: inlineWeekKeyboard);
                     }
                     else
@@ -240,30 +260,31 @@ public class HandleUpdateService
                             DateTime.Today.Add(new TimeSpan(18, 30, 0)),
                             DateTime.Today.Add(new TimeSpan(20, 0, 0)),
                         };
+
                         string[] timeStrings =
                         {
-                            "First", "",
-                            "Second", "",
-                            "Third", "",
-                            "Fourth", "",
-                            "Fifth", "",
-                            "Sixth", "",
-                            "Seventh"
+                            "8:00 - 9:30", "",
+                            "9:40 - 11:10", "",
+                            "11:20 - 12:50", "",
+                            "13:30 - 15:00", "",
+                            "15:10 - 16:40", "",
+                            "16:50 - 18:20", "",
+                            "18:30 - 20:00"
                         };
 
                         for (int i = 0; i < timesOfLessons.Length; i += 2)
                         {
-                            if (myDateTime >= timesOfLessons[i] && myDateTime < timesOfLessons[i + 1])
-                            {
-                                _resultStrings[3] = timeStrings[i];
-                            }
+                            if (myDateTime < timesOfLessons[i] || myDateTime >= timesOfLessons[i + 1]) continue;
+                            _logger.LogInformation("Hello" + timeStrings[i]);
+                            _resultStrings[3] = timeStrings[i];
+                            break;
                         }
 
                         action = await botClient.EditMessageTextAsync(
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text:
-                            $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}\n Будешь выбирать здание?",
+                            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nБудешь выбирать здание?",
                             replyMarkup: inlineYNBuildingKeyboard);
                     }
 
@@ -274,7 +295,7 @@ public class HandleUpdateService
                         chatId: query.Message!.Chat.Id,
                         messageId: query.Message.MessageId,
                         text:
-                        $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n Now choose day of week",
+                        $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТеперь выбери день недели",
                         replyMarkup: inlineDayKeyboard);
                     break;
                 case '2':
@@ -283,7 +304,7 @@ public class HandleUpdateService
                         chatId: query.Message!.Chat.Id,
                         messageId: query.Message.MessageId,
                         text:
-                        $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n Now chose time",
+                        $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели:  {_resultStrings[2]}\nМожешь выбрать временной промежуток",
                         replyMarkup: inlineTimeKeyboard);
                     break;
                 case '3':
@@ -292,7 +313,7 @@ public class HandleUpdateService
                         chatId: query.Message!.Chat.Id,
                         messageId: query.Message.MessageId,
                         text:
-                        $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}\n Будешь выбирать здание?",
+                        $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nБудешь выбирать здание?",
                         replyMarkup: inlineYNBuildingKeyboard);
                     break;
                 case '4':
@@ -303,11 +324,15 @@ public class HandleUpdateService
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text:
-                            $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}",
+                            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}",
                             replyMarkup: inlineBuildingKeyboard);
                     }
                     else
                     {
+                        _resultStrings = new string[8];
+                        var str = _resultStrings.Aggregate("",
+                            (current, resultString) => current + (resultString + " "));
+                        _logger.LogInformation($"Request: {str}");
                         throw new NotImplementedException();
                     }
 
@@ -318,7 +343,7 @@ public class HandleUpdateService
                         chatId: query.Message!.Chat.Id,
                         messageId: query.Message.MessageId,
                         text:
-                        $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}\n You chose {_resultStrings[5]}\n Будешь выбирать кабинет?",
+                        $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nТы выбрал корпус: {_resultStrings[5]}\nБудешь выбирать кабинет?",
                         replyMarkup: inlineYNRoomKeyboard);
                     break;
                 case '6':
@@ -329,10 +354,14 @@ public class HandleUpdateService
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
                             text:
-                            $"You chose mode: {_resultStrings[0]}\nYou chose {_resultStrings[1]} type of week\n You chose {_resultStrings[2]} day\n You chose {_resultStrings[3]}\n You chose {_resultStrings[5]}\n Напишите кабинет");
+                            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели:{_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\nТы выбрал корпус: {_resultStrings[5]}\n Напишите кабинет");
                     }
                     else
                     {
+                        _resultStrings = new string[8];
+                        var str = _resultStrings.Aggregate("",
+                            (current, resultString) => current + (resultString + " "));
+                        _logger.LogInformation($"Request: {str}");
                         throw new NotImplementedException();
                     }
 
@@ -340,6 +369,7 @@ public class HandleUpdateService
                 case '7':
                     if (query.Data.ToString()[2..] == "Yes")
                     {
+                        _resultStrings = new string[8];
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
@@ -351,7 +381,7 @@ public class HandleUpdateService
                         action = await botClient.SendTextMessageAsync(
                             chatId: query.Message!.Chat.Id,
                             replyMarkup: inlineModeKeyboard,
-                            text: "Choose mode:");
+                            text: "Выбери режим работы");
                     }
 
                     break;
