@@ -22,6 +22,14 @@ public class UpdateDatabaseJob : IJob
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
+        
+        
+        for (int i = 0; i < 9; i++)
+        {
+            var group = await Parser.GetGroupIdAsync(i.ToString());
+            
+        }
+        
         var lessons = await Parser.GetScheduleAsync("4241");
         
         _logger.LogInformation("DB has been updated");

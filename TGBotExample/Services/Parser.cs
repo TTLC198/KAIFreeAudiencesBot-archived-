@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using TGBotExample.Models;
 
 namespace TGBotExample.Services;
@@ -78,18 +79,16 @@ public class Parser
         return await response.Content.ReadAsStringAsync();
     }
 
-    public static async Task<List<Lesson>> GetScheduleAsync(string groupNum)
+    public static async Task<IEnumerable<IEnumerable<DBModels>>> GetScheduleAsync(string groupNum)
     {
-        List<Lesson> lessons = new List<Lesson>();
-        var json = await GetScheduleJsonAsync(groupNum);
-        
-        var settings = new JsonSerializerSettings();
-        settings.TypeNameHandling = TypeNameHandling.Objects;
-        settings.MissingMemberHandling = MissingMemberHandling.Ignore;
-        
-        var tempLesson = JsonConvert.DeserializeObject<Temporary>(json);
-        //lessons.Add(lesson);
-
-        return lessons;
+        var jsonText = await GetScheduleJsonAsync(groupNum);
+        var j = JToken.Parse(jsonText);
+        var ps = j.Children();
+        var models = ps.Select(n =>
+        {
+            var model = n.Values().Select(m => m.ToObject<DBModels>());
+            return model;
+        });
+        return models;
     }
 }
