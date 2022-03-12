@@ -16,12 +16,13 @@ public class HandleUpdateService
 
     public static string[] _resultStrings = new string[8];
 
+
     public InlineKeyboardMarkup inlineModeKeyboard = new(new[]
     {
         new[]
         {
-            InlineKeyboardButton.WithCallbackData(text: "Сегодня", callbackData: "0_Automatic"),
-            InlineKeyboardButton.WithCallbackData(text: "Ручной ввод", callbackData: "0_byHand"),
+            InlineKeyboardButton.WithCallbackData(text: "Сегодня", callbackData: "0_Автоматический ввод"),
+            InlineKeyboardButton.WithCallbackData(text: "Ручной ввод", callbackData: "0_Ручной ввод"),
         }
     });
 
@@ -29,19 +30,19 @@ public class HandleUpdateService
     {
         new[]
         {
-            InlineKeyboardButton.WithCallbackData(text: "Чет", callbackData: "1_even"),
-            InlineKeyboardButton.WithCallbackData(text: "Нечет", callbackData: "1_odd"),
+            InlineKeyboardButton.WithCallbackData(text: "Чет", callbackData: "1_Четная"),
+            InlineKeyboardButton.WithCallbackData(text: "Нечет", callbackData: "1_Нечетная"),
         }
     });
 
     public InlineKeyboardMarkup inlineDayKeyboard = new(new[]
     {
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Пн", callbackData: "2_Monday")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Вт", callbackData: "2_Tuesday")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Ср", callbackData: "2_Wednesday")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Чт", callbackData: "2_Thursday")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Пт", callbackData: "2_Friday")},
-        new[] {InlineKeyboardButton.WithCallbackData(text: "Сб", callbackData: "2_Saturday")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Пн", callbackData: "2_Понедельник")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Вт", callbackData: "2_Вторник")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Ср", callbackData: "2_Среда")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Чт", callbackData: "2_Четверг")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Пт", callbackData: "2_Пятница")},
+        new[] {InlineKeyboardButton.WithCallbackData(text: "Сб", callbackData: "2_Суббота")},
     });
 
     public InlineKeyboardMarkup inlineTimeKeyboard = new(new[]
@@ -151,9 +152,10 @@ public class HandleUpdateService
         try
         {
             Task<Message>? action = null;
-            if (_resultStrings[6] == "Yes")
+            if (_resultStrings[6] == "Yes" && int.TryParse(message.Text, out var res))
             {
                 action = TypeRoom(_botClient, message);
+                _resultStrings[6] = "No";
             }
             else
             {
@@ -181,7 +183,7 @@ public class HandleUpdateService
 
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: "Hello!"
+            text: "Я не знаю такую комманду"
         );
     }
 
@@ -198,6 +200,7 @@ public class HandleUpdateService
 
     private async Task<Message> FreeRoom(ITelegramBotClient botClient, Message message)
     {
+        _resultStrings = new string[8];
         Message mes = await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
             text: "Отлично, приступим!",
@@ -229,19 +232,21 @@ public class HandleUpdateService
             {
                 case '0':
                     _resultStrings[0] = query.Data.ToString()[2..];
-                    if (_resultStrings[0] == "byHand")
+                    if (_resultStrings[0] == "Ручной ввод")
                     {
                         action = await botClient.EditMessageTextAsync(
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
-                            text: $"You chose mode: {_resultStrings[0]}\nВыбери четсность недели",
+                            text: $"You chose mode: {_resultStrings[0]}\nВыбери четность недели",
                             replyMarkup: inlineWeekKeyboard);
                     }
                     else
                     {
                         DateTime myDateTime = DateTime.Now;
                         int firstDayOfYear = (int) new DateTime(myDateTime.Year, 1, 1).DayOfWeek;
-                        _resultStrings[1] = ((myDateTime.DayOfYear + firstDayOfYear) / 7 + 1) % 2 == 1 ? "odd" : "even";
+                        _resultStrings[1] = ((myDateTime.DayOfYear + firstDayOfYear) / 7 + 1) % 2 == 1
+                            ? "Нечетная"
+                            : "Четная";
                         _resultStrings[2] = myDateTime.DayOfWeek.ToString();
                         DateTime[] timesOfLessons = new DateTime[]
                         {
@@ -275,7 +280,6 @@ public class HandleUpdateService
                         for (int i = 0; i < timesOfLessons.Length; i += 2)
                         {
                             if (myDateTime < timesOfLessons[i] || myDateTime >= timesOfLessons[i + 1]) continue;
-                            _logger.LogInformation("Hello" + timeStrings[i]);
                             _resultStrings[3] = timeStrings[i];
                             break;
                         }
@@ -333,7 +337,7 @@ public class HandleUpdateService
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        throw new NotImplementedException();
+                        await ThreePar(_resultStrings);
                     }
 
                     break;
@@ -362,7 +366,7 @@ public class HandleUpdateService
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        throw new NotImplementedException();
+                        await FourPar(_resultStrings);
                     }
 
                     break;
@@ -373,7 +377,7 @@ public class HandleUpdateService
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        throw new NotImplementedException();
+                        await FifPar(_resultStrings);
                     }
                     else
                     {
@@ -392,6 +396,21 @@ public class HandleUpdateService
             _logger.LogError($"Something went wrong:\n{e.Message}");
             await UnknownMessageHandlerAsync(_botClient, query.Message);
         }
+    }
+
+    private async Task ThreePar(string[] threeStrings)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task FourPar(string[] fourStrings)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task FifPar(string[] fifeStrings)
+    {
+        throw new NotImplementedException();
     }
 
     private static async Task<Message> UnknownMessageHandlerAsync(ITelegramBotClient botClient, Message message)
