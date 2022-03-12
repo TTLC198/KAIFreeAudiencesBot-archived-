@@ -13,7 +13,7 @@ public class Program
         Host.CreateDefaultBuilder(args)
             .ConfigureServices(((context, services) =>
             {
-                // Add the required Quartz.NET services
+                /*// Add the required Quartz.NET services
                 services.AddQuartz(q =>  
                 {
                     // Use a Scoped container to create jobs. I'll touch on this later
@@ -28,7 +28,7 @@ public class Program
                 });
 
                 services.AddQuartzHostedService(
-                    q => q.WaitForJobsToComplete = true);
+                    q => q.WaitForJobsToComplete = true);*/
             }))
             .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
 }

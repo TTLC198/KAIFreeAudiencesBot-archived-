@@ -11,6 +11,25 @@ public class Group
     public string forma { get; set; }
 }
 
+public class Temporary
+{
+    public string prepodNameEnc { get; set; }
+    public string dayDate { get; set; }
+    public string audNum { get; set; }
+    public string disciplName { get; set; }
+    public string buildNum { get; set; }
+    public string orgUnitName { get; set; }
+    public string dayTime { get; set; }
+    public string dayNum { get; set; }
+    public string potok { get; set; }
+    public string prepodName { get; set; }
+    public string disciplNum { get; set; }
+    public string orgUnitId { get; set; }
+    public string prepodLogin { get; set; }
+    public string disciplType { get; set; }
+    public string disciplNameEnc { get; set; }
+}
+
 public class Parser
 {
     private static readonly string kaiUrl = "https://kai.ru/raspisanie";
@@ -58,6 +77,19 @@ public class Parser
         var response = await httpClient.SendAsync(requestMessage);
         return await response.Content.ReadAsStringAsync();
     }
-    
-    
+
+    public static async Task<List<Lesson>> GetScheduleAsync(string groupNum)
+    {
+        List<Lesson> lessons = new List<Lesson>();
+        var json = await GetScheduleJsonAsync(groupNum);
+        
+        var settings = new JsonSerializerSettings();
+        settings.TypeNameHandling = TypeNameHandling.Objects;
+        settings.MissingMemberHandling = MissingMemberHandling.Ignore;
+        
+        var tempLesson = JsonConvert.DeserializeObject<Temporary>(json);
+        //lessons.Add(lesson);
+
+        return lessons;
+    }
 }

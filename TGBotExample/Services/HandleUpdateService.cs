@@ -74,11 +74,11 @@ public class HandleUpdateService
 
     private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
     {
-        var parser = await Parser.GetScheduleJsonAsync(message.Text!.Split(' ')[1]);
+        var parser = await Parser.GetScheduleAsync(message.Text!.Split(' ')[1]);
         
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: parser
+            text: String.Join(", ", parser)
         );
     }
 

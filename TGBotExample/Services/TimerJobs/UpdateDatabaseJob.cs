@@ -22,10 +22,8 @@ public class UpdateDatabaseJob : IJob
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
-        List<Lesson> lessons = new List<Lesson>();
-
-        lessons.Add(JsonConvert.DeserializeObject<Lesson>(await Parser.GetScheduleJsonAsync("4241")));
-
+        var lessons = await Parser.GetScheduleAsync("4241");
+        
         _logger.LogInformation("DB has been updated");
         
         return ;
