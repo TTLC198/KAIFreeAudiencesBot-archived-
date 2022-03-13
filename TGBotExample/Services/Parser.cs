@@ -19,8 +19,8 @@ public class Parser
     public static async Task<string> GetGroupsIdAsync(string groupNum)
     {
         using var httpClient = new HttpClient();
-        string request = kaiUrl +
-                         "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10"
+        string request = kaiUrl 
+                         + "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10"
                          + "&p_p_lifecycle=2"
                          + "&p_p_state=normal"
                          + "&p_p_mode=view"
@@ -37,7 +37,7 @@ public class Parser
 
         var groups = JsonConvert.DeserializeObject<List<GroupApi>>(responseBody)!;
 
-        return groups.ToString()!;
+        return groups.First().id.ToString();
     }
 
     public static async Task<string> GetScheduleJsonAsync(string groupId)

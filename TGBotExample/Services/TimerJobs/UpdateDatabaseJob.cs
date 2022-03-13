@@ -26,33 +26,29 @@ public class UpdateDatabaseJob : IJob
 
         try
         {
-            for (int i = 8; i < 9; i++)
+            for (int i = 0; i < 9; i++)
             {
-                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
+                var groupId = await Parser.GetGroupsIdAsync(i.ToString());
+                var groupSc = await Parser.GetScheduleAsync(groupId);
+                foreach (var dbmodelss in groupSc)
                 {
-                    var groupSc = await Parser.GetScheduleAsync("22834");
-                    foreach (var dbmodelss in groupSc)
+                    var temp = dbmodelss;
+                    foreach (var dbmodels in dbmodelss)
                     {
-                        var temp = dbmodelss;
-                        foreach (var dbmodels in dbmodelss)
-                        {
-                            var groups = await db.GetGroups();
-                            dbModelsList.Add(dbmodels);
-                            //await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
-                        }
+                        var groups = await db.GetGroups();
+                        dbModelsList.Add(dbmodels);
+                        await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
                     }
                 }
             }
-            var groupSchedule = await Parser.GetScheduleAsync("22834");
-            var temp1 = dbModelsList;
         }
         catch (Exception ex)
         {
             _logger.LogCritical("Something went wrong!\n" + ex.Message);
         }
 
+        var tempList = dbModelsList;
+
         _logger.LogInformation("DB has been updated");
-        
-        return ;
     }
 }

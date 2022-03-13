@@ -107,6 +107,13 @@ public class HandleUpdateService
     {
         ResizeKeyboard = true
     };
+    public ReplyKeyboardMarkup Back = new(new[]
+    {
+        new KeyboardButton[] {"Назад"}
+    })
+    {
+        ResizeKeyboard = true
+    };
 
     public HandleUpdateService(ITelegramBotClient botClient, ILogger<HandleUpdateService> logger,
         IServiceProvider services)
@@ -165,12 +172,13 @@ public class HandleUpdateService
             {
                 action = message.Text!.Split(' ')[0] switch
                 {
-                    "/start" => OnStart(_botClient, message),
+                    "/start" or "Назад" => OnStart(_botClient, message),
                     "Узнать" => FreeRoom(_botClient, message),
-                    "sh" => SendSheduleAsync(_botClient, message),
-                    _ => SendSheduleAsync(_botClient, message)
+                    "sh" => SendScheduleAsync(_botClient, message),
+                    _ => SendMessageAsync(_botClient, message)
                 };
             }
+
             Message sentMessage = await action;
             _logger.LogInformation("The message was sent with id: {sentMessageId}", sentMessage.MessageId);
         }
@@ -195,40 +203,41 @@ public class HandleUpdateService
             }
         }
     }
-    private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
+
+    private async Task<Message> SendScheduleAsync(ITelegramBotClient botClient, Message message)
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
-        string temp = "";
+
+        List<DBModels> dbModelsList = new List<DBModels>();
+
         try
         {
-            var groupId = "22834";
-            var groupSchedule = await Parser.GetScheduleAsync(groupId);
-            /*foreach (var dbmodelss in groupSchedule)
+            var groupId = await Parser.GetGroupsIdAsync("4241");
+            var groupSc = await Parser.GetScheduleAsync(groupId);
+            foreach (var dbmodelss in groupSc)
             {
                 var temp = dbmodelss;
                 foreach (var dbmodels in dbmodelss)
                 {
                     var groups = await db.GetGroups();
                     dbModelsList.Add(dbmodels);
-                    await db.CreateLesson(dbmodels, "4241");
+                    await db.CreateLesson(dbmodels,
+                        groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
                 }
-            }*/
-            var model = groupSchedule.First().First();
-            
-            await db.CreateLesson(model, await Parser.GetGroupsIdAsync("4241"));
-            _logger.LogInformation(temp);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogCritical("Something went wrong!\n" + ex.Message);
         }
 
+        var tempList = dbModelsList;
+
         _logger.LogInformation("DB has been updated");
 
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: "База данных была обновлена!"
-
+            text: "Update db has been successfully!"
         );
     }
 
@@ -276,7 +285,7 @@ public class HandleUpdateService
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
             text:
-            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\n Ты выбрал корпус: {_resultStrings[5]}\n Ты выбрал комнату {_resultStrings[7]}",
+            $"Ты выбрал режим: {_resultStrings[0]}\nТы выбрал четность недели: {_resultStrings[1]}\nТы выбрал день недели: {_resultStrings[2]}\nТы выбрал временной промежуток: {_resultStrings[3]}\n Ты выбрал корпус: {_resultStrings[5]}\n Ты выбрал кабинет: {_resultStrings[7]}",
             replyMarkup: inlineAllRightKeyboard,
             cancellationToken: CancellationToken.None);
     }
@@ -295,7 +304,7 @@ public class HandleUpdateService
                         action = await botClient.EditMessageTextAsync(
                             chatId: query.Message!.Chat.Id,
                             messageId: query.Message.MessageId,
-                            text: $"You chose mode: {_resultStrings[0]}\nВыбери четность недели",
+                            text: $"Ты выбрал режим: {_resultStrings[0]}\nВыбери четность недели",
                             replyMarkup: inlineWeekKeyboard,
                             cancellationToken: CancellationToken.None);
                     }
@@ -408,11 +417,10 @@ public class HandleUpdateService
                     }
                     else
                     {
-                        _resultStrings = new string[8];
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        await ThreePar(_resultStrings);
+                        await ThreePar(_resultStrings, query.Message!);
                     }
 
                     break;
@@ -439,11 +447,10 @@ public class HandleUpdateService
                     }
                     else
                     {
-                        _resultStrings = new string[8];
                         var str = _resultStrings.Aggregate("",
                             (current, resultString) => current + (resultString + " "));
                         _logger.LogInformation($"Request: {str}");
-                        await FourPar(_resultStrings);
+                        await FourPar(_resultStrings, query.Message!);
                     }
 
                     break;
@@ -458,13 +465,13 @@ public class HandleUpdateService
                     }
                     else
                     {
-                        _resultStrings = new string[8];
-                        action = await botClient.SendTextMessageAsync(
+                        await botClient.SendTextMessageAsync(
                             chatId: query.Message!.Chat.Id,
                             replyMarkup: inlineModeKeyboard,
                             text: "Выбери режим работы",
                             cancellationToken: CancellationToken.None);
                     }
+
                     break;
             }
         }
@@ -507,16 +514,53 @@ public class HandleUpdateService
 
         return humanStrings;
     }
-    private async Task ThreePar(string[] threeStrings)
+
+    private async Task ThreePar(string[] threeStrings, Message message)
     {
         threeStrings = Translate(threeStrings);
-        throw new NotImplementedException();
+        List<Classroom> exampleClassRoom = new();
+        List<Lesson> exampleLessons = new();
+        List<GroupsWeekDays> exampleDaysList = new();
+        var groupDays = exampleDaysList
+            .Where(wd => wd.parity == threeStrings[1] && wd.week_day == int.Parse(threeStrings[2])).ToList();
+        var lessons = exampleLessons
+            .Where(le => le.time_range_id == int.Parse(threeStrings[3]) && le.schedule_id == groupDays[0].id).ToList();
+        var classRoom = new List<Classroom>();
+        foreach (var lesson in lessons)
+        {
+            classRoom.AddRange(exampleClassRoom.Where(cl => cl.id == lesson.classroom_id));
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            Message sentMessage = await _botClient.SendTextMessageAsync(
+                chatId: message.Chat.Id,
+                text:
+                $"Корпус {i + 1}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == i).Aggregate("", (current, row) => current + (row + ", "))}",
+                replyMarkup: Back);
+        }
     }
 
-    private async Task FourPar(string[] fourStrings)
+    private async Task FourPar(string[] fourStrings, Message message)
     {
         fourStrings = Translate(fourStrings);
-        throw new NotImplementedException();
+        List<Classroom> exampleClassRoom = new();
+        List<Lesson> exampleLessons = new();
+        List<GroupsWeekDays> exampleDaysList = new();
+        var groupDays = exampleDaysList
+            .Where(wd => wd.parity == fourStrings[1] && wd.week_day == int.Parse(fourStrings[2])).ToList();
+        var lessons = exampleLessons
+            .Where(le => le.time_range_id == int.Parse(fourStrings[3]) && le.schedule_id == groupDays[0].id).ToList();
+        var classRoom = new List<Classroom>();
+        foreach (var lesson in lessons)
+        {
+            classRoom.AddRange(exampleClassRoom.Where(cl => cl.id == lesson.classroom_id));
+        }
+        Message sentMessage = await _botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text:
+            $"Корпус {int.Parse(fourStrings[5])}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == int.Parse(fourStrings[5])).Aggregate("", (current, row) => current + (row + ", "))}",
+            replyMarkup: Back);
     }
 
     private async Task FifPar(string[] fifeStrings, Message message)
@@ -526,26 +570,33 @@ public class HandleUpdateService
         List<Lesson> exampleLessons = new();
         List<GroupsWeekDays> exampleDaysList = new();
         List<Teacher> exampleTeachers = new();
-        if (exampleClassRoom.Count(cl => cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == fifeStrings[7]) == 0)
+        if (exampleClassRoom.Count(cl =>
+                cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == fifeStrings[7]) == 0)
         {
             var classRooms = exampleClassRoom.Where(cl =>
                 cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == fifeStrings[7]).ToList();
-            var groupDays = exampleDaysList.Where(wd => wd.parity == fifeStrings[1] && wd.week_day.ToString() == fifeStrings[2]).ToList();
-            var lessons = exampleLessons.Where(le => le.time_range_id == int.Parse(fifeStrings[3]) && le.classroom_id == classRooms[0].id && le.schedule_id == groupDays[0].id).ToList();
+            var groupDays = exampleDaysList
+                .Where(wd => wd.parity == fifeStrings[1] && wd.week_day == int.Parse(fifeStrings[2])).ToList();
+            var lessons = exampleLessons.Where(le =>
+                le.time_range_id == int.Parse(fifeStrings[3]) && le.classroom_id == classRooms[0].id &&
+                le.schedule_id == groupDays[0].id).ToList();
             if (lessons.Any())
             {
                 foreach (var lesson in lessons)
                 {
                     Message lessonMes = await _botClient.SendTextMessageAsync(
                         chatId: message.Chat.Id,
-                        text: $"Room {classRooms[0].classroom_number}, Teacher: {exampleTeachers.Where(tc => tc.id == lesson.teacher_id).ToString()}, group: {groupDays[0].group_id}");
+                        text:
+                        $"Room {classRooms[0].classroom_number}, Teacher: {exampleTeachers.Where(tc => tc.id == lesson.teacher_id).ToString()}, group: {groupDays[0].group_id}",
+                        replyMarkup: Back);
                 }
             }
             else
             {
                 Message lessonMes = await _botClient.SendTextMessageAsync(
                     chatId: message.Chat.Id,
-                    text: "В данный момент аудитория свободна");
+                    text: "В данный момент аудитория свободна",
+                    replyMarkup: Back);
             }
         }
         else
@@ -560,3 +611,4 @@ public class HandleUpdateService
             text: char.ConvertFromUtf32(0x26A0) + "Произошла ошибка на стороне сервера");
     }
 }
+

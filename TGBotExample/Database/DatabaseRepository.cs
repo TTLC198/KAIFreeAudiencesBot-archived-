@@ -66,11 +66,10 @@ public class DatabaseRepository : IDatabaseRepository
                 { building = dbModels.building, classroom_number = dbModels.classroom_num });
             var teacherName = dbModels.teacher_name.Trim().ToLowerInvariant().ToList();
             teacherName.ForEach(fn => fn = teacherName.IndexOf(fn) == 0 ? fn.ToString().ToUpper()[0] : fn);
-            CultureInfo ruRu = new CultureInfo("ru-RU");
             await CreateTimeRange(new TimeRange()
             {
-                start = TimeOnly.ParseExact(dbModels.start.Trim(), "hh:mm",  ruRu),
-                end = TimeOnly.ParseExact(dbModels.start.Trim(), "hh:mm", ruRu)
+                start = DateTime.Parse(dbModels.start.Trim()),
+                end = DateTime.Parse(dbModels.start.Trim()).AddHours(1.5)
             });
             
             await CreateTeacher(new Teacher() { full_name = teacherName.ToArray().ToString()!});
@@ -95,7 +94,7 @@ public class DatabaseRepository : IDatabaseRepository
                 new
                 {
                     schedule_id = schedule.First(s => s.group_id == gi && s.group_number == gn).id,
-                    time_range_id = timeRanges.First(t => t.start == TimeOnly.Parse(dbModels.start)).id,
+                    time_range_id = timeRanges.First(t => t.start == DateTime.Parse(dbModels.start)).id,
                     classroom_id = classrooms.First(c => c.classroom_number == dbModels.classroom_num && c.building == dbModels.building).id,
                     teacher_i = teachers.First(t => t.full_name == teacherName.ToString())
                 });

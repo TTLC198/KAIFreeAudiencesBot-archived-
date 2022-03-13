@@ -59,11 +59,11 @@ public class TimeRange
     /// <summary>
     /// Время начала занятия
     /// </summary>
-    public TimeOnly start { get; set; }
+    public DateTime start { get; set; }
     /// <summary>
     /// Время конца занятия
     /// </summary>
-    public TimeOnly end { get; set; }
+    public DateTime end { get; set; }
 }
 
 public class Teacher
