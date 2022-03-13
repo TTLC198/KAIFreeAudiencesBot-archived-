@@ -2,7 +2,7 @@
 
 namespace TGBotExample.Services;
 
-public class Groups
+public class Group
 {
     /// <summary>
     /// id
@@ -14,7 +14,7 @@ public class Groups
     public int group_number { get; set; }
 }
 
-public class GroupsWeekDays : Groups
+public class GroupsWeekDays : Group
 {
     /// <summary>
     /// id
@@ -23,7 +23,7 @@ public class GroupsWeekDays : Groups
     /// <summary>
     /// День недели
     /// </summary>
-    public string week_day { get; set; }
+    public int week_day { get; set; }
     /// <summary>
     /// Четность недели
     /// </summary>
@@ -108,7 +108,7 @@ public class DBModels
 {
     [JsonProperty("buildNum")] public int building  { get; set; }
     [JsonProperty("dayNum")] public int week_day { get; set; }
-    [JsonProperty("audNum")] public int classroom_id { get; set; }
+    [JsonProperty("audNum")] public int classroom_num { get; set; }
     [JsonProperty("dayTime")] public string start  { get; set; }
     [JsonProperty("prepodName")] public string teacher_name  { get; set; }
     [JsonProperty("dayDate")] public string parity { get; set; }

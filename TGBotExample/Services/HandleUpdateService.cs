@@ -8,7 +8,8 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TGBotExample.Models;
-using Microsoft.Data.SqlClient;
+using TGBotExample.Services.TimerJobs;
+
 
 namespace TGBotExample.Services;
 
@@ -196,22 +197,36 @@ public class HandleUpdateService
     }
     private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
     {
-        string connectionString = "Server=tcp:lab-pp-7-2.database.windows.net,1433;Initial Catalog=Teachers;Persist Security Info=False;User ID=Andrey;Password=13qeadSW2;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;TRUSTED_CONNECTION = TRUE;Integrated Security=False";
-        
-        SqlConnection connection = new SqlConnection(connectionString);
+        var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
+
         try
         {
-            await connection.OpenAsync();
-            _logger.LogInformation($"insert into [User] values ({message.Chat.Id}, {int.Parse(message.Text!.Split(' ')[1])})");
-            connection.Query($"insert into [User] values ({message.Chat.Id}, {int.Parse(message.Text!.Split(' ')[1])})");
+            for (int i = 0; i < 9; i++)
+            {
+                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
+                {
+                    foreach (var dbmodelss in await Parser.GetScheduleAsync(groupId))
+                    {
+                        foreach (var dbmodels in dbmodelss)
+                        {
+                            var groups = await db.GetGroups();
+                            await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                        }
+                    }
+                }
+            }
         }
-        catch (SqlException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex.Message);
+            _logger.LogCritical("Something went wrong!\n" + ex.Message);
         }
+
+        _logger.LogInformation("DB has been updated");
+
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: "String.Join(\", \", parser)"
+            text: "Update db has been successfully!"
+
         );
     }
 
