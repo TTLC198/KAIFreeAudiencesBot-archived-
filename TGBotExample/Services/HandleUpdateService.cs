@@ -1,4 +1,6 @@
-﻿using System.Security;
+﻿using System.Data;
+using System.Security;
+using Dapper;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Requests;
@@ -6,6 +8,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TGBotExample.Models;
+using Microsoft.Data.SqlClient;
 
 namespace TGBotExample.Services;
 
@@ -164,7 +167,7 @@ public class HandleUpdateService
                     "/start" => OnStart(_botClient, message),
                     "Узнать" => FreeRoom(_botClient, message),
                     "sh" => SendSheduleAsync(_botClient, message),
-                    _ => SendMessageAsync(_botClient, message)
+                    _ => SendSheduleAsync(_botClient, message)
                 };
             }
             Message sentMessage = await action;
@@ -193,11 +196,22 @@ public class HandleUpdateService
     }
     private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
     {
-        var parser = await Parser.GetScheduleAsync(message.Text!.Split(' ')[1]);
+        string connectionString = "Server=tcp:lab-pp-7-2.database.windows.net,1433;Initial Catalog=Teachers;Persist Security Info=False;User ID=Andrey;Password=13qeadSW2;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;TRUSTED_CONNECTION = TRUE;Integrated Security=False";
         
+        SqlConnection connection = new SqlConnection(connectionString);
+        try
+        {
+            await connection.OpenAsync();
+            _logger.LogInformation($"insert into [User] values ({message.Chat.Id}, {int.Parse(message.Text!.Split(' ')[1])})");
+            connection.Query($"insert into [User] values ({message.Chat.Id}, {int.Parse(message.Text!.Split(' ')[1])})");
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex.Message);
+        }
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: String.Join(", ", parser)
+            text: "String.Join(\", \", parser)"
         );
     }
 
