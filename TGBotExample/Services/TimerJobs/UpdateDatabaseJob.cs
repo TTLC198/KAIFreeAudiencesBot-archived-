@@ -22,27 +22,33 @@ public class UpdateDatabaseJob : IJob
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
+        List<DBModels> dbModelsList = new List<DBModels>();
+
         try
         {
-            for (int i = 0; i < 9; i++)
+            for (int i = 8; i < 9; i++)
             {
                 foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
                 {
-                    foreach (var dbmodelss in await Parser.GetScheduleAsync(groupId))
+                    var groupSc = await Parser.GetScheduleAsync("22834");
+                    foreach (var dbmodelss in groupSc)
                     {
+                        var temp = dbmodelss;
                         foreach (var dbmodels in dbmodelss)
                         {
                             var groups = await db.GetGroups();
-                            await db.CreateLesson(dbmodels,
-                                groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                            dbModelsList.Add(dbmodels);
+                            //await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
                         }
                     }
                 }
             }
+            var groupSchedule = await Parser.GetScheduleAsync("22834");
+            var temp1 = dbModelsList;
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex.Message);
+            _logger.LogCritical("Something went wrong!\n" + ex.Message);
         }
 
         _logger.LogInformation("DB has been updated");

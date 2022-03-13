@@ -43,7 +43,7 @@ public class Classroom
     /// <summary>
     /// Номер аудитории
     /// </summary>
-    public int classroom_number { get; set; }
+    public string classroom_number { get; set; }
     /// <summary>
     /// Учебное здание
     /// </summary>
@@ -59,11 +59,11 @@ public class TimeRange
     /// <summary>
     /// Время начала занятия
     /// </summary>
-    public TimeSpan start { get; set; }
+    public TimeOnly start { get; set; }
     /// <summary>
     /// Время конца занятия
     /// </summary>
-    public TimeSpan end { get; set; }
+    public TimeOnly end { get; set; }
 }
 
 public class Teacher
@@ -95,11 +95,11 @@ public class Lesson
     /// <summary>
     /// id аудитории
     /// </summary>
-    public int classroom { get; set; }
+    public int classroom_id { get; set; }
     /// <summary>
     /// id учителя
     /// </summary>
-    public int teacher { get; set; }
+    public int teacher_id { get; set; }
 }
 /// <summary>
 /// Общий класс
@@ -108,7 +108,7 @@ public class DBModels
 {
     [JsonProperty("buildNum")] public int building  { get; set; }
     [JsonProperty("dayNum")] public int week_day { get; set; }
-    [JsonProperty("audNum")] public int classroom_num { get; set; }
+    [JsonProperty("audNum")] public string classroom_num { get; set; }
     [JsonProperty("dayTime")] public string start  { get; set; }
     [JsonProperty("prepodName")] public string teacher_name  { get; set; }
     [JsonProperty("dayDate")] public string parity { get; set; }

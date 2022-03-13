@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Globalization;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using TGBotExample.Services;
@@ -63,17 +64,41 @@ public class DatabaseRepository : IDatabaseRepository
             var groups = await GetGroups();
             await CreateClassroom(new Classroom()
                 { building = dbModels.building, classroom_number = dbModels.classroom_num });
-            var teacherName = dbModels.teacher_name.ToLowerInvariant().ToList();
+            var teacherName = dbModels.teacher_name.Trim().ToLowerInvariant().ToList();
             teacherName.ForEach(fn => fn = teacherName.IndexOf(fn) == 0 ? fn.ToString().ToUpper()[0] : fn);
+            CultureInfo ruRu = new CultureInfo("ru-RU");
+            await CreateTimeRange(new TimeRange()
+            {
+                start = TimeOnly.ParseExact(dbModels.start.Trim(), "hh:mm",  ruRu),
+                end = TimeOnly.ParseExact(dbModels.start.Trim(), "hh:mm", ruRu)
+            });
             
             await CreateTeacher(new Teacher() { full_name = teacherName.ToArray().ToString()!});
+
+            int gn = int.Parse(groupNum);
+            int gi = groups.First(g => g.group_number == gn).id;
+
             await CreateGroupsWeekDays(new GroupsWeekDays()
             {
-                group_number = int.Parse(groupNum), week_day = dbModels.week_day, parity = dbModels.parity,
-                group_id = groups.First(g => g.group_number.ToString() == groupNum).id
+                group_number = gn,
+                week_day = dbModels.week_day,
+                parity = dbModels.parity.Trim(),
+                group_id = gi
             });
+
+            var classrooms = await GetClassrooms();
+            var timeRanges = await GetTimeRanges();
+            var schedule = await GetGroupsWeekDayss();
+            var teachers = await GetTeachers();
+            
             await db.ExecuteAsync("INSERT INTO lesson VALUES (@shedule_id, @time_range_id, @classroom_id, @teacher_id)", 
-                new {  });
+                new
+                {
+                    schedule_id = schedule.First(s => s.group_id == gi && s.group_number == gn).id,
+                    time_range_id = timeRanges.First(t => t.start == TimeOnly.Parse(dbModels.start)).id,
+                    classroom_id = classrooms.First(c => c.classroom_number == dbModels.classroom_num && c.building == dbModels.building).id,
+                    teacher_i = teachers.First(t => t.full_name == teacherName.ToString())
+                });
         }
     }
     

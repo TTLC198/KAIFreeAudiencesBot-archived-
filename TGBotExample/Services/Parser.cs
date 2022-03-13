@@ -9,7 +9,14 @@ public class Parser
 {
     private static readonly string kaiUrl = "https://kai.ru/raspisanie";
 
-    public static async Task<List<string>> GetGroupsIdAsync(string groupNum)
+    private class GroupApi
+    {
+        public int id { get; set; }
+        public string group { get; set; }
+        public string forma { get; set; }
+    }
+
+    public static async Task<string> GetGroupsIdAsync(string groupNum)
     {
         using var httpClient = new HttpClient();
         string request = kaiUrl +
@@ -28,9 +35,9 @@ public class Parser
             .EnsureSuccessStatusCode()
             .Content.ReadAsStringAsync();
 
-        var groups = JsonConvert.DeserializeObject<List<Group>>(responseBody)!;
+        var groups = JsonConvert.DeserializeObject<List<GroupApi>>(responseBody)!;
 
-        return groups.Select(gr => gr.group_number.ToString()).ToList();
+        return groups.ToString()!;
     }
 
     public static async Task<string> GetScheduleJsonAsync(string groupId)
@@ -59,7 +66,7 @@ public class Parser
         var ps = j.Children();
         var models = ps.Select(n =>
         {
-            var model = n.Values() != null ? n.Values().Select(m => m.ToObject<DBModels>()) : null; 
+            var model = n.Values().Select(m => m.ToObject<DBModels>()); 
             return model;
         });
         return models!;
