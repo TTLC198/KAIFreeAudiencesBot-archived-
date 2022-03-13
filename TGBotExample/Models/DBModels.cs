@@ -95,11 +95,11 @@ public class Lesson
     /// <summary>
     /// id аудитории
     /// </summary>
-    public int classroom { get; set; }
+    public int classroom_id { get; set; }
     /// <summary>
     /// id учителя
     /// </summary>
-    public int teacher { get; set; }
+    public int teacher_id { get; set; }
 }
 /// <summary>
 /// Общий класс

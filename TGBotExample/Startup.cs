@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using Microsoft.Data.SqlClient;
+using Telegram.Bot;
 using TGBotExample.Models;
 using TGBotExample.Services;
 
@@ -25,13 +26,14 @@ public class Startup
         //httpClient.Timeout = new TimeSpan(0, 5, 0);
         services.AddHttpClient("dmb_webhook").AddTypedClient<ITelegramBotClient>(client =>
             new TelegramBotClient(BotConfiguration.BotApiKey, httpClient));
-
         services.AddHostedService<ConfigureWebhook>();
-        services.AddTransient<IDatabaseRepository, DatabaseRepository>(provider => new DatabaseRepository(ConnectionString));
+        services.AddTransient<IDatabaseRepository, DatabaseRepository>(provider =>
+            new DatabaseRepository(ConnectionString));
         services.AddScoped<HandleUpdateService>();
         services.AddControllers().AddNewtonsoftJson();
         services.AddControllers();
     }
+
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
