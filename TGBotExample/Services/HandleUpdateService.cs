@@ -3,6 +3,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TGBotExample.Models;
+using TGBotExample.Services.TimerJobs;
 
 namespace TGBotExample.Services;
 
@@ -74,11 +75,35 @@ public class HandleUpdateService
 
     private async Task<Message> SendSheduleAsync(ITelegramBotClient botClient, Message message)
     {
-        var parser = await Parser.GetScheduleAsync(message.Text!.Split(' ')[1]);
+        var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
+
+        try
+        {
+            for (int i = 0; i < 9; i++)
+            {
+                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
+                {
+                    foreach (var dbmodelss in await Parser.GetScheduleAsync(groupId))
+                    {
+                        foreach (var dbmodels in dbmodelss)
+                        {
+                            var groups = await db.GetGroups();
+                            await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical("Something went wrong!\n" + ex.Message);
+        }
+
+        _logger.LogInformation("DB has been updated");
         
         return await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
-            text: String.Join(", ", parser)
+            text: "Update db has been successfully!"
         );
     }
 

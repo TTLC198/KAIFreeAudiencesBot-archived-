@@ -22,16 +22,29 @@ public class UpdateDatabaseJob : IJob
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
 
-        
-        
-        for (int i = 0; i < 9; i++)
+        try
         {
-            var group = await Parser.GetGroupIdAsync(i.ToString());
-            
+            for (int i = 0; i < 9; i++)
+            {
+                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
+                {
+                    foreach (var dbmodelss in await Parser.GetScheduleAsync(groupId))
+                    {
+                        foreach (var dbmodels in dbmodelss)
+                        {
+                            var groups = await db.GetGroups();
+                            await db.CreateLesson(dbmodels,
+                                groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                        }
+                    }
+                }
+            }
         }
-        
-        var lessons = await Parser.GetScheduleAsync("4241");
-        
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex.Message);
+        }
+
         _logger.LogInformation("DB has been updated");
         
         return ;

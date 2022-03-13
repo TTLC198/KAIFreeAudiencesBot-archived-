@@ -5,37 +5,11 @@ using TGBotExample.Models;
 
 namespace TGBotExample.Services;
 
-public class Group
-{
-    public string id { get; init; }
-    public string group { get; init; }
-    public string forma { get; set; }
-}
-
-public class Temporary
-{
-    public string prepodNameEnc { get; set; }
-    public string dayDate { get; set; }
-    public string audNum { get; set; }
-    public string disciplName { get; set; }
-    public string buildNum { get; set; }
-    public string orgUnitName { get; set; }
-    public string dayTime { get; set; }
-    public string dayNum { get; set; }
-    public string potok { get; set; }
-    public string prepodName { get; set; }
-    public string disciplNum { get; set; }
-    public string orgUnitId { get; set; }
-    public string prepodLogin { get; set; }
-    public string disciplType { get; set; }
-    public string disciplNameEnc { get; set; }
-}
-
 public class Parser
 {
     private static readonly string kaiUrl = "https://kai.ru/raspisanie";
 
-    public static async Task<string> GetGroupIdAsync(string groupNum)
+    public static async Task<List<string>> GetGroupsIdAsync(string groupNum)
     {
         using var httpClient = new HttpClient();
         string request = kaiUrl +
@@ -54,15 +28,14 @@ public class Parser
             .EnsureSuccessStatusCode()
             .Content.ReadAsStringAsync();
 
-        var group = JsonConvert.DeserializeObject<List<Group>>(responseBody)!.First();
+        var groups = JsonConvert.DeserializeObject<List<Group>>(responseBody)!;
 
-        return group!.id;
+        return groups.Select(gr => gr.group_number.ToString()).ToList();
     }
 
-    public static async Task<string> GetScheduleJsonAsync(string groupNum)
+    public static async Task<string> GetScheduleJsonAsync(string groupId)
     {
         using var httpClient = new HttpClient();
-        var groupId = await GetGroupIdAsync(groupNum);
         string requestUri = kaiUrl
                             + "?p_p_id=pubStudentSchedule_WAR_publicStudentSchedule10"
                             + "&p_p_lifecycle=2"
@@ -79,16 +52,16 @@ public class Parser
         return await response.Content.ReadAsStringAsync();
     }
 
-    public static async Task<IEnumerable<IEnumerable<DBModels>>> GetScheduleAsync(string groupNum)
+    public static async Task<IEnumerable<IEnumerable<DBModels>>> GetScheduleAsync(string groupId)
     {
-        var jsonText = await GetScheduleJsonAsync(groupNum);
+        var jsonText = await GetScheduleJsonAsync(groupId);
         var j = JToken.Parse(jsonText);
         var ps = j.Children();
         var models = ps.Select(n =>
         {
-            var model = n.Values().Select(m => m.ToObject<DBModels>());
+            var model = n.Values() != null ? n.Values().Select(m => m.ToObject<DBModels>()) : null; 
             return model;
         });
-        return models;
+        return models!;
     }
 }
