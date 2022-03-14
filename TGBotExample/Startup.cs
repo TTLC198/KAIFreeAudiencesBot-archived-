@@ -14,8 +14,7 @@ public class Startup
     {
         Configuration = configuration;
         BotConfiguration = Configuration.GetSection("BotConfiguration").Get<BotConfiguration>();
-        ConnectionString = "Server=tcp:tschbot.database.windows.net,1433;Initial Catalog=Schedule;Persist Security Info=False;User ID=k.paul;Password=ZbNU)9*P@D*s7\"\">;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;TRUSTED_CONNECTION = TRUE;Integrated Security=False";
-        //Configuration.GetConnectionString("MainDB");
+        ConnectionString = Configuration.GetConnectionString("MainDB");
     }
 
     public void ConfigureServices(IServiceCollection services)
