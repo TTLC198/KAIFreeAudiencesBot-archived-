@@ -11,7 +11,7 @@ public class Program
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
-            .ConfigureServices(((context, services) =>
+            /*.ConfigureServices(((context, services) =>
             {
                 // Add the required Quartz.NET services
                 services.AddQuartz(q =>  
@@ -28,6 +28,6 @@ public class Program
 
                 services.AddQuartzHostedService(
                     q => q.WaitForJobsToComplete = true);
-            }))
+            }))*/
             .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
 }

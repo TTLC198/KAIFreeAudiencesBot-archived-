@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Data.SqlTypes;
+using Newtonsoft.Json;
 
 namespace TGBotExample.Services;
 
@@ -47,7 +48,7 @@ public class Classroom
     /// <summary>
     /// Учебное здание
     /// </summary>
-    public int building { get; set; }
+    public string building { get; set; }
 }
 
 public class TimeRange
@@ -59,11 +60,11 @@ public class TimeRange
     /// <summary>
     /// Время начала занятия
     /// </summary>
-    public DateTime start { get; set; }
+    public TimeSpan start_time { get; set; }
     /// <summary>
     /// Время конца занятия
     /// </summary>
-    public DateTime end { get; set; }
+    public TimeSpan end_time { get; set; }
 }
 
 public class Teacher
@@ -106,7 +107,7 @@ public class Lesson
 /// </summary>
 public class DBModels
 {
-    [JsonProperty("buildNum")] public int building  { get; set; }
+    [JsonProperty("buildNum")] public string building  { get; set; }
     [JsonProperty("dayNum")] public int week_day { get; set; }
     [JsonProperty("audNum")] public string classroom_num { get; set; }
     [JsonProperty("dayTime")] public string start  { get; set; }

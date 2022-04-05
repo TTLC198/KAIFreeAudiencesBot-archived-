@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.SqlTypes;
 using System.Security;
 using Dapper;
 using Telegram.Bot;
@@ -174,6 +175,7 @@ public class HandleUpdateService
                 {
                     "/start" or "Назад" => OnStart(_botClient, message),
                     "Узнать" => FreeRoom(_botClient, message),
+                    "db" => DBHandlerAsync(_botClient, message),
                     "sh" => SendScheduleAsync(_botClient, message),
                     _ => SendMessageAsync(_botClient, message)
                 };
@@ -204,6 +206,101 @@ public class HandleUpdateService
         }
     }
 
+    private async Task<Message> DBHandlerAsync(ITelegramBotClient botClient, Message message)
+    {
+        var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
+        string text = String.Empty;
+
+        try
+        {
+            if (message.Text.Split(' ')[1] == "1")
+            {
+                //await db.CreateGroup(
+                //    new Group() {group_number = 4241, id = int.Parse(Parser.GetGroupsIdAsync("4241").Result)});
+
+                var groups = await db.GetGroups();
+                List<string> groupsNames = groups.Select(g => g.group_number.ToString()).ToList();
+                
+                text = string.Join(", ", groupsNames);
+            }
+            else if (message.Text.Split(' ')[1] == "2")
+            {
+                var groups = await db.GetGroups();
+                
+                await db.CreateGroupsWeekDays(
+                    new GroupsWeekDays()
+                    {
+                        group_id = groups.First(g => g.group_number == 4241).id,
+                        parity = "неч",
+                        week_day = 1
+                    });
+
+                var groupsWeekDaysList = await db.GetGroupsWeekDayss();
+                
+                List<string> gwdNames = groupsWeekDaysList.Select(gwd => $"gid: {gwd.group_id}\nparity: {gwd.parity}\nwd: {gwd.week_day}").ToList();
+                
+                text = string.Join(", ", gwdNames);
+            }
+            else if (message.Text.Split(' ')[1] == "3")
+            {
+                await db.CreateTeacher(new Teacher()
+                {
+                    full_name = "Осдачая Дамира Маликовна"
+                });
+                
+                List<string> teacherNames = db.GetTeachers().Result.Select(t => t.full_name).ToList();
+                
+                text = string.Join(", ", teacherNames);
+            }
+            else if (message.Text.Split(' ')[1] == "4")
+            {
+                await db.CreateTimeRange(new TimeRange()
+                {
+                    start_time = new TimeSpan(8, 0, 0),
+                    end_time = new TimeSpan(9, 30, 0)
+                });
+                
+                List<string> teacherNames = db.GetTimeRanges().Result.Select(t => $"start: {t.start_time}\nend: {t.end_time}").ToList();
+                
+                text = string.Join(", ", teacherNames);
+            }
+            else if (message.Text.Split(' ')[1] == "5")
+            {
+                await db.CreateClassroom(new Classroom()
+                {
+                    building = "7",
+                    classroom_number = "125"
+                });
+                
+                List<string> classroomNames = db.GetClassrooms().Result.Select(c => $"building: {c.building}\nnumber: {c.classroom_number}").ToList();
+                
+                text = string.Join(", ", classroomNames);
+            }
+            else if (message.Text.Split(' ')[1] == "6")
+            {
+                await db.CreateLesson(new DBModels()
+                {
+                    building = "7",
+                    classroom_num = "125",
+                    lessonType = "пр",
+                    parity = "неч",
+                    start = "11:20",
+                    teacher_name = "Осадчая Дамира Маликовна",
+                    week_day = 5
+                }, "4241");
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogCritical(exception.Message);
+        }
+
+        return await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text: text
+        );
+    }
+
     private async Task<Message> SendScheduleAsync(ITelegramBotClient botClient, Message message)
     {
         var db = _services.CreateScope().ServiceProvider.GetRequiredService<IDatabaseRepository>();
@@ -212,26 +309,34 @@ public class HandleUpdateService
 
         try
         {
-            var groupId = await Parser.GetGroupsIdAsync("4241");
-            var groupSc = await Parser.GetScheduleAsync(groupId);
-            foreach (var dbmodelss in groupSc)
+            IEnumerable<DBModels> tempEnumerable = new List<DBModels>();
+            for (int i = 1; i < 9; i++)
             {
-                var temp = dbmodelss;
-                foreach (var dbmodels in dbmodelss)
+                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
                 {
-                    var groups = await db.GetGroups();
-                    dbModelsList.Add(dbmodels);
-                    await db.CreateLesson(dbmodels,
-                        groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                    var groupSc = await Parser.GetScheduleAsync(groupId);
+                    if (groupSc.ToList().Count > 0)
+                    {
+                        foreach (var dbmodelss in groupSc)
+                        {
+                            tempEnumerable = dbmodelss;
+                            foreach (var dbmodels in dbmodelss)
+                            {
+                                var groups = await db.GetGroups();
+                                dbModelsList.Add(dbmodels);
+                                //await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                            }
+                        }
+                    }
                 }
             }
+            
+            var tempList = dbModelsList;
         }
         catch (Exception ex)
         {
             _logger.LogCritical("Something went wrong!\n" + ex.Message);
         }
-
-        var tempList = dbModelsList;
 
         _logger.LogInformation("DB has been updated");
 
@@ -536,7 +641,7 @@ public class HandleUpdateService
             Message sentMessage = await _botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
                 text:
-                $"Корпус {i + 1}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == i).Aggregate("", (current, row) => current + (row + ", "))}",
+                $"Корпус {i + 1}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == i.ToString()).Aggregate("", (current, row) => current + (row + ", "))}",
                 replyMarkup: Back);
         }
     }
@@ -559,7 +664,7 @@ public class HandleUpdateService
         Message sentMessage = await _botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
             text:
-            $"Корпус {int.Parse(fourStrings[5])}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == int.Parse(fourStrings[5])).Aggregate("", (current, row) => current + (row + ", "))}",
+            $"Корпус {int.Parse(fourStrings[5])}\n В этот период времени заняты: {classRoom.Where(cl => cl.building == fourStrings[5]).Aggregate("", (current, row) => current + (row + ", "))}",
             replyMarkup: Back);
     }
 
@@ -571,10 +676,10 @@ public class HandleUpdateService
         List<GroupsWeekDays> exampleDaysList = new();
         List<Teacher> exampleTeachers = new();
         if (exampleClassRoom.Count(cl =>
-                cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == fifeStrings[7]) == 0)
+                cl.building == fifeStrings[5] && cl.classroom_number == fifeStrings[7]) == 0)
         {
             var classRooms = exampleClassRoom.Where(cl =>
-                cl.building == int.Parse(fifeStrings[5]) && cl.classroom_number == fifeStrings[7]).ToList();
+                cl.building == fifeStrings[5] && cl.classroom_number == fifeStrings[7]).ToList();
             var groupDays = exampleDaysList
                 .Where(wd => wd.parity == fifeStrings[1] && wd.week_day == int.Parse(fifeStrings[2])).ToList();
             var lessons = exampleLessons.Where(le =>

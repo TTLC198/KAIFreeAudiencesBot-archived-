@@ -26,18 +26,20 @@ public class UpdateDatabaseJob : IJob
 
         try
         {
-            for (int i = 0; i < 9; i++)
+            for (int i = 1; i < 9; i++)
             {
-                var groupId = await Parser.GetGroupsIdAsync(i.ToString());
-                var groupSc = await Parser.GetScheduleAsync(groupId);
-                foreach (var dbmodelss in groupSc)
+                foreach (var groupId in await Parser.GetGroupsIdAsync(i.ToString()))
                 {
-                    var temp = dbmodelss;
-                    foreach (var dbmodels in dbmodelss)
+                    var groupSc = await Parser.GetScheduleAsync(groupId);
+                    foreach (var dbmodelss in groupSc)
                     {
-                        var groups = await db.GetGroups();
-                        dbModelsList.Add(dbmodels);
-                        await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                        var temp = dbmodelss;
+                        foreach (var dbmodels in dbmodelss)
+                        {
+                            var groups = await db.GetGroups();
+                            dbModelsList.Add(dbmodels);
+                            await db.CreateLesson(dbmodels, groups.First(gr => gr.id.ToString() == groupId).group_number.ToString());
+                        }
                     }
                 }
             }

@@ -1,4 +1,6 @@
 ﻿using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TGBotExample.Models;
@@ -16,7 +18,7 @@ public class Parser
         public string forma { get; set; }
     }
 
-    public static async Task<string> GetGroupsIdAsync(string groupNum)
+    public static async Task<List<string>> GetGroupsIdAsync(string groupNum)
     {
         using var httpClient = new HttpClient();
         string request = kaiUrl 
@@ -37,7 +39,7 @@ public class Parser
 
         var groups = JsonConvert.DeserializeObject<List<GroupApi>>(responseBody)!;
 
-        return groups.First().id.ToString();
+        return groups.Select(gr => gr.id.ToString()).ToList();
     }
 
     public static async Task<string> GetScheduleJsonAsync(string groupId)
@@ -62,7 +64,8 @@ public class Parser
     public static async Task<IEnumerable<IEnumerable<DBModels>>> GetScheduleAsync(string groupId)
     {
         var jsonText = await GetScheduleJsonAsync(groupId);
-        var j = JToken.Parse(jsonText);
+        var text = JsonObject.Parse(jsonText).ToJsonString();
+        var j = JToken.Parse(text);
         var ps = j.Children();
         var models = ps.Select(n =>
         {

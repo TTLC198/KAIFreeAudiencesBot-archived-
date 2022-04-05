@@ -18,16 +18,23 @@ public class DatabaseRepository : IDatabaseRepository
     public async Task CreateClassroom(Classroom classroom)
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
-        { 
-            await db.ExecuteAsync("INSERT INTO classroom VALUES (@classroom_number, @building)", new { classroom.classroom_number, classroom.building}); 
+        {
+            var classrooms = await GetClassrooms();
+            if (classrooms.Count(cl => 
+                    cl.building == classroom.building &&
+                    cl.building == classroom.building) == 0)
+                await db.ExecuteAsync("INSERT INTO classroom VALUES (@classroom_number, @building)", new { classroom.classroom_number, classroom.building}); 
         }
     }
     
     public async Task CreateGroup(Group group)
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
-        { 
-            await db.ExecuteAsync("INSERT INTO groups VALUES (@id, @group_id_ref)", new {id = group.id, group_id_ref = group.group_number});
+        {
+            var groups = await GetGroups();
+            if (groups.Count(gr => 
+                    gr.group_number == group.group_number) == 0)
+                await db.ExecuteAsync("INSERT INTO groups VALUES (@id, @group_id_ref)", new {id = group.id, group_id_ref = group.group_number});
         }
     }
     
@@ -35,6 +42,11 @@ public class DatabaseRepository : IDatabaseRepository
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         { 
+            var groupsWeekDayss = await GetGroupsWeekDayss();
+            if (groupsWeekDayss.Count(gwd => 
+                    gwd.parity == groupsWeekDays.parity &&
+                    gwd.week_day == groupsWeekDays.week_day &&
+                    gwd.group_id == groupsWeekDays.group_id) == 0)
             await db.ExecuteAsync("INSERT INTO groupsweekdays VALUES (@week_day, @parity, @group_id)", new {groupsWeekDays.week_day, groupsWeekDays.parity, groupsWeekDays.group_id});
         }
     }
@@ -43,7 +55,10 @@ public class DatabaseRepository : IDatabaseRepository
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         { 
-            await db.ExecuteAsync("INSERT INTO teacher VALUES (@full_name)", new {teacher.full_name});
+            var teachers = await GetTeachers();
+            if (teachers.Count(t => 
+                    t.full_name == teacher.full_name) == 0)
+                await db.ExecuteAsync("INSERT INTO teacher VALUES (@full_name)", new {teacher.full_name});
         }
     }
     
@@ -51,7 +66,10 @@ public class DatabaseRepository : IDatabaseRepository
     {
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
-            await db.ExecuteAsync("INSERT INTO timerange VALUES (@start_time, @end_time)", new {timeRange.start, timeRange.end});
+            var timeranges = await GetTimeRanges();
+            if (timeranges.Count(tr => 
+                    tr.start_time == timeRange.start_time) == 0)
+                await db.ExecuteAsync("INSERT INTO timerange VALUES (@start_time, @end_time)", new {timeRange.start_time, timeRange.end_time});
         }
     }
 
@@ -60,22 +78,21 @@ public class DatabaseRepository : IDatabaseRepository
         using (IDbConnection db = new SqlConnection(_connectionString))
         {
             await CreateGroup(new Group() { group_number = int.Parse(groupNum)});
-            
             var groups = await GetGroups();
             await CreateClassroom(new Classroom()
                 { building = dbModels.building, classroom_number = dbModels.classroom_num });
-            var teacherName = dbModels.teacher_name.Trim().ToLowerInvariant().ToList();
-            teacherName.ForEach(fn => fn = teacherName.IndexOf(fn) == 0 ? fn.ToString().ToUpper()[0] : fn);
+            var classroomsList = await GetClassrooms();
             await CreateTimeRange(new TimeRange()
             {
-                start = DateTime.Parse(dbModels.start.Trim()),
-                end = DateTime.Parse(dbModels.start.Trim()).AddHours(1.5)
+                start_time = TimeSpan.Parse(dbModels.start.Trim()),
+                end_time = TimeSpan.Parse(dbModels.start.Trim()).Add(new TimeSpan(1, 30, 0))
             });
-            
-            await CreateTeacher(new Teacher() { full_name = teacherName.ToArray().ToString()!});
+            var timeRangesList = await GetTimeRanges();
+            await CreateTeacher(new Teacher() { full_name = dbModels.teacher_name.Trim().ToLowerInvariant()!});
+            var teachersList = await GetTeachers();
 
             int gn = int.Parse(groupNum);
-            int gi = groups.First(g => g.group_number == gn).id;
+            int gi = groups.FirstOrDefault(g => g.group_number == gn)!.id;
 
             await CreateGroupsWeekDays(new GroupsWeekDays()
             {
@@ -84,19 +101,20 @@ public class DatabaseRepository : IDatabaseRepository
                 parity = dbModels.parity.Trim(),
                 group_id = gi
             });
-
+            var gwdList = await GetGroupsWeekDayss();
+            
             var classrooms = await GetClassrooms();
             var timeRanges = await GetTimeRanges();
             var schedule = await GetGroupsWeekDayss();
             var teachers = await GetTeachers();
             
-            await db.ExecuteAsync("INSERT INTO lesson VALUES (@shedule_id, @time_range_id, @classroom_id, @teacher_id)", 
+            await db.ExecuteAsync("INSERT INTO lesson VALUES (@schedule_id, @time_range_id, @classroom_id, @teacher_id)", 
                 new
                 {
-                    schedule_id = schedule.First(s => s.group_id == gi && s.group_number == gn).id,
-                    time_range_id = timeRanges.First(t => t.start == DateTime.Parse(dbModels.start)).id,
+                    schedule_id = schedule.First(s => s.group_id == gi && s.week_day == dbModels.week_day && s.parity == dbModels.parity.Trim()).id,
+                    time_range_id = timeRanges.First(t => t.start_time == TimeSpan.Parse(dbModels.start)).id,
                     classroom_id = classrooms.First(c => c.classroom_number == dbModels.classroom_num && c.building == dbModels.building).id,
-                    teacher_i = teachers.First(t => t.full_name == teacherName.ToString())
+                    teacher_id = teachers.First(t => t.full_name == dbModels.teacher_name.Trim().ToLowerInvariant()).id
                 });
         }
     }
